@@ -6,39 +6,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'zulu'
-
       - name: Install Unzip Tool
         run: sudo apt-get update && sudo apt-get install -y unzip
 
       - name: Unzip Project Files
         run: |
           unzip *.zip
-          # Hunt for the directory containing build.gradle and pull everything up
-          GRADLE_DIR=$(find . -name "build.gradle" -exec dirname {} \; | head -n 1)
-          if [ "$GRADLE_DIR" != "." ] && [ ! -z "$GRADLE_DIR" ]; then
-            echo "Moving files from $GRADLE_DIR to root"
-            mv "$GRADLE_DIR"/* . 2>/dev/null || true
-            mv "$GRADLE_DIR"/.* . 2>/dev/null || true
+          # Hunt for the directory containing pubspec.yaml and pull everything up
+          FLUTTER_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \; | head -n 1)
+          if [ "$FLUTTER_DIR" != "." ] && [ ! -z "$FLUTTER_DIR" ]; then
+            mv "$FLUTTER_DIR"/* . 2>/dev/null || true
+            mv "$FLUTTER_DIR"/.* . 2>/dev/null || true
           fi
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew || true
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
-      - name: Build with Gradle
-        run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug --stacktrace
-          else
-            gradle assembleDebug --stacktrace
-          fi
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: my-app-apk
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: build/app/outputs/flutter-apk/app-release.apk
